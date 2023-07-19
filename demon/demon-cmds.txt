@@ -1,0 +1,244 @@
+WHAT IS DEMON
+=============
+2023-mar-20 by Dave Warker
+
+It's an EPROM resident app to help you write and debug 6809 programs. It provides:
+
+- Memory display/alteration
+- Instruction disassembly/assembly
+- Code execution with tracing and breakpoint support
+- Processor register inspection/alteration
+- Reading/writing code in Motorola S and Intel Hex format
+- other assorted useful goodies
+
+THE COMMAND LINE
+----------------
+Your commands are entered into a command line buffer that can hold 64 bytes in total.
+It supports basic editing with BACKSPACE. Separate multiple commands with a ';'. Press
+RETURN to execute. Press CTL-R at the command prompt to recall the previous command
+or press TAB to recall AND execute it.
+
+NUMBERS
+-------
+Wherever a numeric argument is expected you can enter:
+
+SYNTAX			WHAT					EXAMPLES
+&<digits>		Decimal Number			&123; -&42
+$<hdigits>		Hexadecimal number		$FF; -$B020
+'<char>			Character				'A (= $41); '; (= $3B)
+<hdigits>		(defaults to HEX)		12 (= &18); A0 (= &160)
+
+or one of these special forms:
+
+`<register>		Register value			`A; `PC; `DP
+`<symbol>		Predefined values		`DEMON; `ALF; `SYL
+
+The last symbols give the default EPROM addresses of the Demon debugger,
+Alf FORTH-a-like and Syl LISP apps which are then only pre-defines for now.
+
+EXPRESSIONS
+-----------
+Arguments can also be 16 bit expressions using (in reverse order of precedence):
+
+OPERATOR		WHAT					EXAMPLES
+&				Bitwise AND				$55 & $F0 (= $50); $F & &12 (= $0C)
+|				Bitwise OR				$55 | $F0 (= $F5); 0 | 1 (= 1)
+^				Bitwise Exclusive OR	$55 ^ $F0 (= $A5); 1 ^ 1 (= 0)
++				Addition				$55 + $FF (= $154)
+-				Subtraction				$55 - $FF (= $FF56)
+*				Multiplication			$55 * $FF (= $54AB)
+/				Division				$55 / &10 (= 8)
+\				Remainder				$55 \ &10 (= 5)
+-				Unary minus (negate)	-$55 (= $FFAB)
+~				Bitwise invert (not)	~$55 (= $FFAA)
+@				Contents of address		@`demon (= @$E000 = $10CE)
+()				Sub-expression			(1+2)*3 (= 9)
+
+Note that all math is in 16 bits. Multiply, divide and remainder are unsigned
+even if you use signed operands.
+
+RANGES
+------
+Some commands take memory range arguments:
+
+SYNTAX			WHAT					EXAMPLES
+<start> <end>	Start to end address	0 FF; $1000 $2000
+<start>,<len>	Start and length		0,$100; `ALF,&100
+
+In most cases you can omit the end address/length and the command will use
+a reasonable default such as a single address.
+
+STRING
+------
+The Substitute (S) command can also take a quoted string such as "foo".
+Use a backslash (\) to include a quote, semicolon or backslash in the
+string: "I said \"hi\"\; and he did too." Strings can't extend past
+the end of a command or the end of the command line itself.
+
+COMMANDS
+--------
+
+Commands are each a single letter, UPPER or lower case. In most case you
+shouldn't type a SPACE between the command and it's first argument (the
+exception is the E command.) Syntax errors cause a BEEP and a '^' is
+displayed below the spot where the error was detected (but it can be off
+by a char or two.)
+
+C<range>
+	Calculate the CRC-16 CHECKSUM for a memory range.
+		> CE000,2000
+		10A6
+
+C<range> <dest>
+	COMPARE a memory range to memory starting at destination address.
+	For each mismatched byte displays the source addr, value and the corresponding
+	destination address and value.
+		> C0,10 10
+		0000=12 0010=65
+		0002=03 0012=05
+
+D<range>
+	DISPLAY a memory range in hexadecimal and ASCII characters, 16 bytes/line.
+	Unprintable characters (CTLs, etc) are displays as '.'.
+		> D0,8
+		0000  12 02 03 04 01 54 03 65                          .....T.e
+
+D<addr>
+	Same as above but displays exactly 16 bytes.
+		> D`DEMON
+		E000  10 CE 7F A5 86 7F 1F 8B 86 DA 91 00 26 03 BD E6  ............&...
+
+E<expr>
+	EVALUATE and display an expression in HEX.
+		> E`Y+10
+		0010
+
+E& <expr>
+	Same as above except displays result in DECIMAL. 
+		> E& 100
+		&256
+
+F<range> <byte>
+	FILL a memory range with a byte value (can be an expression.)
+		> F0,7F00 0; F100 1FF '$
+
+G<addr>
+	(GO) Start execution at a spercific address. Omit address to continue from current PC.
+		> G1000
+		> G`ALF
+
+G<addr> <bkpr>
+	(GO) Start execution at an address and stop when you reach the breakpoint address.
+	Inserts a BRK instruction at the breakpoint address and removes it when the
+	breakpoint is hit (also displays the registers.) NOTE: Hitting reset while running
+	with a breakpoint set may not remove the BRK (I try to detect this but I'm not always
+	successful.) Also, you can't set a breakpoint in EPROM (but see the TRACE command.)
+		> G100 103
+		PC=0103 : BCC    $0129
+		 A=01 B=01 CC=EfhInzvc X=0000 Y=0000 U=0000 S=7E00 DP=C0
+
+GT<bkpt>
+	(GO TIL) Continue execution from the current PC with a breakpoint at given address.
+		> GT105
+		PC=0105 : BCC    $012B
+		 A=01 B=01 CC=EfhInzvc X=0000 Y=0000 U=0000 S=7E00 DP=C0
+
+L
+	LOOP the current command line. Goes back to the beginning of the current command line.
+	Use the ESC key to stop the loop.
+		> T;L	(trace one instruction then loop)
+
+M<range> <dest>
+	MOVE a memory range to a destination address. The destination range is allowed
+	to overlap the source range.
+		> M0 FF 100; M1000,100 1001
+
+Q<range> <byte> ...
+	QUERY (search) memory range for a string of up to 8 bytes. Displays the address
+	and string found for each hit. Use an underscore (_) to match any byte at a position.
+		> Q`DEMON,1000 1 2 3
+		EF73  01 02 03                                         ...
+		> QC000 C0FF BD _ _
+		C03C  BD C4 9B                                         ...
+
+R<offset>
+	READ Intel HEX or Motorola S19 record data into memory from the console serial port.
+	You'll typically issue this command then use your terminal app's "send file" command
+	to send assembled/compiled to the debugger. The optional offset is added to the
+	load address for each record (useful if you want to load it into memory at some
+	address other than where it was assembled/compiled for.) Stops when an end of file
+	record is received (Intel HEX = ":00000001FF", Motorola = "S9030000FC" e.g.)
+	Reports the memory range where data was loaded.
+		> R
+		> R1000
+
+S<addr> <byte> ...
+	SUBSTITUTE bytes into memory starting at an address. You can also use a quoted string.
+		> S0 1 2 3; D0
+		0000  01 02 03 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+		> S100 "Hello"; D100,5
+		0100  48 65 6C 6C 6F                                   Hello
+		> S200 1 1+2 3*4 `DP
+
+T<count>
+	TRACE execution starting at current PC for <count> instructions. You can trace into
+	and through EPROM. Omit the count to trace one instruction. Displays the register
+	set at the end of the trace.
+		> T; T1000
+
+TO<count>
+	Same as above but TRACES OVER subroutine calls, treating them like a single instruction.
+		> TO; TOFFFF
+
+W<range>
+	Write a range of memory to the serial console in Motorola S19 format. Useful to
+	save memory contents on your host computer.
+		> WE000,10
+		S113E00010CE7FA5867F1F8B86DA91002603BDE69E
+		S9030000FC
+
+WI<range>
+	Same as above except writes in Intel HEX format.
+		> WIE000,10
+		:10E0000010CE7FA5867F1F8B86DA91002603BDE6A2
+		:00E010010F
+
+X
+	Display the entire 6809 register set. Also disassembles the instruction at the PC.
+	The Condition Codes (CC) are displayed symbolically in lower case if a flag is not
+	set or UPPERCASE if it is set.
+		> X
+		PC=C03C : JSR    $C49B
+		 A=C0 B=00 CC=efhInzvc X=0000 Y=0000 U=0000 S=7E00 DP=C0
+
+X<reg>=<expr> ...
+	Change one or more registers to new values. Register names are: A, B, D, X, Y, S, U,
+	CC, DP and PC. Multiple register assignments are permitted.
+		> XPC=1000
+		PC=1000 : NEG    <$00
+		A=01 B=01 CC=EfhInzvc X=0000 Y=0000 U=0000 S=7E00 DP=C0
+		> XA=1 B='z X=`Y CC=0
+		PC=1000 : NEG    <$00
+		 A=01 B=7A CC=efhinzvc X=0000 Y=0000 U=0000 S=7E00 DP=C0
+
+Y<range>
+	DISASSEMBLE a range of memory (display as 6809 instructions.) Defaults to a single
+	instruction if the range end is omitted. For each instruction it displays the
+	address, hex bytes and the symbolic instruction. Index register offsets are
+	displayed in decimal.
+		> Y`SYL,5
+		D000  86 08           LDA    #$08
+		D002  1F 8B           TFR    A,DP
+		D004  10 CE 10 00     LDS    #$1000
+
+Z<addr>
+	Start an instant assembly at given address. Prompts for 6809 instructions and
+	continues until you enter an empty line. Displays the assembled bytes for each
+	line. Omit the address to continue assembly from the last place you left off.
+	Labels aren't currently supported so use absolute addresses.
+		> z0
+		0000  86 00           LDA    #$00
+		0002  B7 00 12        STA    $0012
+		0005  
+		> Z
+		0005  12              NOP    

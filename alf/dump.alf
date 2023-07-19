@@ -1,0 +1,33 @@
+( Dump memory in hex and ASCII )
+
+( prspace )
+: prspace 0x20 prc ;
+
+( <ch> prp$ -> <ch> )
+: prp$ dup 0x20 < over 0x7e > | if drop 0x2e then ;
+
+( <dig> prx$ )
+: prx$ 0xf & dup 10 < if 0x30 + else 10 - 0x41 + then prc ;
+
+( <byte> prb$ )
+: prb$ dup >> >> >> >> prx$ prx$ ;
+
+( <word> prw$ )
+: prw$ dup >> >> >> >> >> >> >> >> prb$ prb$ ;
+
+( <addr> <count> dux$ )
+: dux$ times i over + b@ prb$ prspace next drop ;
+
+( <addr> <count> duc$ )
+: duc$ times i over + b@ prp$ prc next drop ;
+
+( <addr> <count> dul$ )
+: dul$ over prw$ prspace dup2 dux$ 16 over - times "   " prs next prspace duc$ nl ;
+
+( <addr> <count> dump )
+: dump loop dup 0 != while dup2 16 umin dup rot swap dul$ rot over + rot rot - again drop2 ;
+
+( Echo lines )
+: el loop str$ rdl str$ prs nl str$ "end" scmpi 0 == until ;
+
+eof

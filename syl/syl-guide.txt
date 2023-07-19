@@ -1,0 +1,282 @@
+Simple User Guide for Syl LISP Interpreter
+==========================================
+2023-mar-20 by Dave Warker
+
+What Is Syl?
+------------
+Syl is a fairly minimal LISP interpreter for the 6809 (in particular for Grant's Six
+Chip 6809 Computer aka G6CC.) I wrote it to learn what goes into writing a LISP interpeter
+and to see how well it fits on the 6809 processor (pretty dang well.)
+
+Syl is a pure interpreter, there is no attempt to compile to machine code. It also includes
+a basic "dtop the world" garbage collector for the CONS cell pool. ATOM names are NOT currently
+garbage collected so when the ATOM pool is exhausted Syl has to be restarted. It should be
+possible to includean ATOM pool GC but for my intended uses (playing around) it wasn't worth
+the effort. Hints on writing one can be found at the top of "gc.asm".
+
+As far as syntax goes, I started with the LISP 1.5 Programmer's Manual with changes here and
+there to help me understand it better. Features like "attributes" are not implemented at all
+because I didn't need them. Syl uses the value of a CONS cell field to determine it's type
+(ATOM, CONS, built-in function, integer.) This has implications like Integers are limited to
+15 bits including sign, but it provides a nice compact implementation and fits well with
+the 32KB RAM capacity of the G6CC board.
+
+Feel free to adapt and improve as you see fit. I would very much appreciate it if you let me
+know what you've done with it.
+
+Text Entry
+----------
+When Syl starts you'll see the version number and that's about it. There's no explicit prompt
+other than when you have unclosed parentheses the input is indented (two spaces for each
+unclosed left paren.) Editing is minimal, BACKSPACE and RETURN to terminate a line. There is
+no explicit "load file" command, all input comes via the command line. Use your console app's
+"send text file" option to send text you've created on the desktop computer but be sure to
+issue a (load) command first and include an (eof) command at the end. That enables CTS hardware
+handshaking to the serial port so Syl can keep up with the 115kbps speeds (also enable a short,
+5 ms or so delay after each line or Syl may miss the first character of the next line.)
+
+There is no way to save so for anything significant you'll want to create it on your desktop then
+send it as described above.
+
+Syl Syntax
+----------
+
+Pretty much bog-standard, old-school LISP. Unless specified otherwise, arguments are evaluated
+before being passed to a function so judicious quoting (with ') is needed. All ATOMs are
+converted to UPPER CASE internally. Integers evaluate to themselves so they typically don't
+need to be quoted. Non-function call CONS cells also evaluate to themselves rather than report
+an error, which is probably the wrong thing to do but can be easily changed in the code.
+
+I didn't include DEFN or similar to define functions, use DEF plus FN or FNQ. FN is essentially
+LAMBDA and FNQ is the same except it's arguments are NOT EVALUATED before it's invoked.
+
+I also didn't include any sort of strings which would be a useful addition.
+
+Built-In ATOMs
+--------------
+
+NIL
+	LISP's universal FALSE value.
+
+T
+	And the standard value for TRUE. Actually any non-nil value works but use T in cases
+	where you simply want to return TRUE.
+
+env
+	Used interally to tag environments that map ATOMs to values. Since it's lower case
+	you can't enter it directly (by design) but you might see it in internal data chunks.
+
+ret
+	Similar to "env", used to mark RETURNed values within PROG blocks.
+
+FN
+	As the first element is a list, indicates that the list is a (lambda) function that
+	accepts unquoted (evaluated) arguments. The second element in the list should be
+	the list of arguments it expects and the third and last should be the expression
+	to evaluate when you invoke the function. For example:
+		(FN (X) (* X X))
+	is a function to square a number. Use DEF to actually bind it to a name:
+		(DEF 'SQUARE '(FN (X) (* X X)))
+	Note the quotes. DEF expects it's arguments to be evaluated so you have to quote
+	them in this case or Syl will complain that SQUARE is unbound. DEF always puts
+	it's definition in the global (top level) environment (available as ENV from
+	the command prompt.)
+
+ENV
+	It's value is a list of all currently defined values and functions. If you use
+	it from the command line you'll get the global list of all built-ins and any
+	DEFs you've done. From within a function you'll get IT'S environment which is
+	generally the names and arguments it was passed.
+
+SYL
+	Evaluates to the current Syl version number in the form: major * 10 + minor.
+	So for version 1.0 you'll get 10.
+
+FREE
+	Returns the current free CONS cell count. Does NOT perform a garbage collection.
+
+
+Built-in Functions
+------------------
+Functions have to be parenthesized when invoked. There are two types: BIFs take their
+arguments evaluated and BIQs take them quoted (unevaluated.) Most of these are standard
+LISP functions assuming I've implemented them right.
+
+(QUOTE e) : BIQ
+	Quote an expression. Prevents the expression from being evaluated. Use a single
+	quote (') as a shortcut: '(A.B) is the same as (QUOTE (A.B))
+
+(CAR e) (CDR e) (CADR e) (CADDR e) (CDDR e) : BIF
+	Standard LISP functions to extrace the ADDRESS or DECREMENT parts of a CONS cell
+	(think of them as LEFT and RIGHT if that helps.)
+		(CAR '(A B C))		-> A
+		(CDR '(A B C))		-> (B C)
+		(CADR '(A B C))		-> B
+
+(CONS e1 e2) : BIF
+	Returns a new CONS cell with a CAR part equal to e1 and a CDR part equal to e2.
+		(CONS 1 2)			-> (1.2)
+		(CONS 1 '(2 3))		-> (1 2 3)
+
+(RPLACA c e) : BIF
+	Replaces the CAR part of a CONS cell with a new value without allocating a new cell.
+
+(RPLACD c e) : BIF
+	Same as RPLACA except replaces the CDR part.
+
+(LIST e ...) : BIF
+	Returns a new list composed of all the arguments you passed.
+		(LIST 'A 'B 3)		-> (A B 3)
+		(LIST (CAR (1.2) 3)	-> (1 3)
+
+(COND (p1 e1) ...) : BIQ
+	Basically a compound IF statement. Pass it a list of lists of two elements:
+	the first is the PREDICATE and the second is the associated result. Predicates
+	are evaluated in order until one returns TRUE (i.e. non-NIL), then its
+	associated result is evaluated and returned as the value of the COND. Returns NIL if
+	none of the pedicates are TRUE.
+		(COND ((< 5 0) 'NEGATIVE) ((> 5 0) 'POSITIVE) (T 'MUST-BE-ZERO))
+
+(PROG (v) e1 ...) : BIQ
+	A "program". First argument is a list of variable names that will be available in
+	the PROG and initialized to NIL. That's followed by a list of expressions that are
+	evaluated in order. The final value of the PROG will be NIL unless you've used
+	a (RETURN) expression to return an explicit value. ATOMs included in the list can
+	be used as the target of a (GO) expresion to change the execution order or loop.
+    The variables disappear when the PROG terminates.
+		(PROG (X) (SET 'X 10) LOOP (COND ((= X 0) (RETURN 'DONE))) (SET 'X (- X 1)) (GO LOOP))
+
+(RETURN e) : BIF
+	Can only be used within a PROG or from a function called from within a loop.
+	Terminates the PROG with the value of e. (See PROG above.)
+
+(GO l) : BIQ
+	Only available from within a PROG, causes the PROG to continue execution after
+	the label l that must be one of the elements of it's list. Terminates any
+	nested PROGs. (See PROG above.)
+
+(LET (v) e) : BIQ
+	Passed a list v of variables and an expression. The expression is evaluated
+	with all of the variables initiallized to NIL. The variables disappear when
+	the expression returns. The return value is the value of the expression.
+
+(SET v e) : BIF
+	Set the value of an existing variable to e. Both args are evaluated so if
+	you're passing a simple variable name you'll have to quote it.
+		(LET (FOO) (SET 'FOO 123))
+
+(SETQ v e) : BIQ (sorta)
+	Convenience version of SET that doesn't evaluate the variable name.
+		(LET (BAR) (SETQ BAR 456))
+
+(DEF v e) : BIF
+	Define a new global (top level) value. This is the way you create new functions.
+		(DEF 'FOO  42)
+		(DEF 'FACT '(FN (N) (COND ((<= N 1) N) (T (* N (FACT (- N 1)))))))
+
+(ATOM e) : BIF
+	Predicate that returns T (TRUE) if e is an TOM else returns NIL.
+		(ATOM (CAR '(A.B)))
+
+(NULL e) : BIF
+	Predicate that returns T if e is NIL else returns NIL.
+		(NULL NIL)
+
+(EQ e1 e2) : BIF
+	Predicate that returns T if e1 is exactly the same as e2. And I mean exactly,
+	as in the exact same CONS cell and not two that have the same contents.
+		(EQ '(A.B) '(A.B)) -> NIL
+		(PROG (X) (SETQ X '(A.B)) (RETURN (EQ X X))) -> T
+
+(EQUAL e1 e2) : BIF
+	Returns T if e1 has the same structure as e2, as in all of the non CONS elements
+	have to be EQ to each other but the CONS cells pointing to them can be different.
+		(EQUAL '(A.(B.C)) '(A.(B.C))) -> T
+
+(AND e1 ...) : BIF
+	Returns T if all of the espressions are TRUE (non-NIL). Stops evaluating and
+	returns NIL at the first expression that returns NIL.
+		(AND (= 0 0) (EQ 'A 'A)) -> T
+		(AND (= 1 0) (EQ 'A 'A)) -> NIL
+
+(OR e1 ...) : BIF
+	Returns the value of the first expression that is not NIL or NIL if they are all NIL.
+		(OR (= 1 0) (= 2 3)) -> NIL
+		(OR (= 1 0) 'FOO) -> FOO
+
+(NOT e) : BIF
+	Returns NIL if e is TRUE (non-NIL) or T if it is NIL.
+		(NOT NIL) -> T
+		(NOT 27) -> NIL
+
+(+ e1 e2 ...) (- e1 e2 ...) : BIF
+	Signed integer addition and subtraction. Remember the integer range is just -16383 to 16383.
+		(+ 1 2) -> 3
+		(- 1 2 3) -> -4
+
+(* e1 e2) (/ e1 e2) (REM e1 e2) : BIF
+	Signed integer multiplication, division and remainder. Must pass two arguments.
+		(* -100 2)	-> -200
+		(/ 100 3)	-> 33
+		(REM 100 3)	-> 1
+
+(MIN e1 ...) (MAX e1 ...) : BIF
+	Returns the minimum or maximum signed integer value of all of the arguments.
+		(MIN 100 -10 55 -2)	-> -10
+		(MAX 100 -10 55 -2) -> 100
+
+(| e1 ...) (& e1 ...) (^ e1 ...) : BIF
+	Bitwise AND, OR and Exclusive OR of all of their integer arguments.
+		(| 4 1) -> 5
+		(& 7 9) -> 1
+		(^ 1 2 3 4 5) -> 1
+
+(= e1 e2) : BIF
+	Equal to. Same as (EQ e1 e2).
+
+(!= e1 e2) : BIF
+	Not equal. Same as (NOT (EQ e1 e2)).
+
+(< e1 e2) : BIF
+	Returns T if integer argument e1 is less than e2.
+
+(<= e1 e2) : BIF
+	Returns T if integer argument e1 is less than or equal to e2.
+
+(> e1 e2) : BIF
+	Returns T if integer argument e1 is greater than e2.
+
+(>= e1 e2) : BIF
+	Returns T if integer argument e1 is greater than or equal to e2.
+
+(PRINT e) : BIF
+	Displays (and returns) the value of e.
+
+(PRINTLN e) : BIF
+	Displays (and returns) the value of e then a newline.
+
+(NL)
+	Displays a newline and returns NIL.
+
+(READ)
+	Reads and returns an expression from the console without evaluating it.
+
+(EVAL e) : BIF
+	Evaluate the expression and return it's value.
+		(EVAL '(CONS 'A 'B)) -> (A.B)
+
+(LOAD)
+	Begin loading from the console. Turns ON RTS/CTS handshaking for console
+	input so you can send a multi-line file of Syl code via your terminal
+	program. The file should end with a (LOADED) call to mark it's end. If
+	you don't use (LOAD) then Syl will probably miss characters from the
+	following line as it's processing the previous one.
+
+(LOADED)
+	Marks the end of a LOAD file. Turns OFF RTS/CTS handshaking on the console.
+
+(GC)
+	Force an immediate garbage collection of free CONS cells. Normally an
+	automatic GC happens when Syl runs out of free CONS cells but you can
+	force it to happen earlier. Return value is the new total count of
+	free CONS cells.

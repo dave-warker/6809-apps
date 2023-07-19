@@ -1,0 +1,57 @@
+; "ascii.lib" - Common ASCII character definitions.
+; 2022-aug-31 dww  created.
+
+NUL			equ		$00			;CTL-@
+SOH			equ		$01			;CTL-A Start Of Header
+STX			equ		$02			;CTL-B Start Of teXt
+ETX			equ		$03			;CTL-C End Of teXt
+EOT			equ		$04			;CTL-D End Of Transmission
+ENQ			equ		$05			;CTL-E ENQuire
+ACK			equ		$06			;CTL-F ACKnowledge
+BEL			equ		$07			;CTL-G Bell (aka Ring Monkey's Chimes)
+BS			equ		$08			;CTL-H BackSpace
+HT			equ		$09			;CTL-I Horizontal Tab
+LF			equ		$0A			;CTL-J Line Feed
+VT			equ		$0B			;CTL-K Vertical Tab
+FF			equ		$0C			;CTL-L Form Feed
+CR			equ		$0D			;CTL-M Carriage Return
+SO			equ		$0E			;CTL-N Shift Out
+SI			equ		$0F			;CTL-O SHift In
+DLE			equ		$10			;CTL-P Data Link Escape
+DC1			equ		$11			;CTL-Q Device Control 1 - resume
+XON			equ		DC1
+DC2			equ		$12			;CTL-R Device Control 2
+DC3			equ		$13			;CTL-S Device Control 3 - pause
+XOFF		equ		DC3
+DC4			equ		$14			;CTL-T Device Control 4
+NAK			equ		$15			;CTL-U Negative AcKnowledge
+SYN			equ		$16			;CTL-V SYNc
+ETB			equ		$17			;CTL-W End of Text Block
+CAN			equ		$18			;CTL-X CANcel
+EM			equ		$19			;CTL-Y End of Message
+SUB			equ		$1A			;CTL-Z SUBstitute
+ESC			equ		$1B			;CTL-[ ESCape
+FS			equ		$1C			;CTL-| Field Separator
+GS			equ		$1D			;CTL-] Group Separator
+RS			equ		$1E			;CTL-^ Record Separator
+US			equ		$1F			;CTL-_ Unit Separator
+
+SPACE		equ		$20
+DQUOT		equ		$22			;(")
+DOLLAR		equ		$24			;($)
+AMP			equ		$26			;(&)
+SQUOT		equ		$27			;(')
+LPAREN		equ		$28			;'('
+RPAREN		equ		$29			;')'
+COMMA		equ		$2C			;(,)
+SLASH		equ		$2F			;(/)
+COLON		equ		$3A			;(:)
+SEMIC		equ		$3B			;(;)
+LT			equ		$3C			;(<)
+GT			equ		$3E			;(>)
+BSLASH		equ		$5C			;(\)
+CARET		equ		$5E			;(^)
+UND			equ		$5F			;(_)
+AGRAVE		equ		$60			;(`)
+TILDE		equ		$7E			;(~)
+DEL			equ		$7F

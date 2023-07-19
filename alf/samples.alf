@@ -1,0 +1,7 @@
+( Recursive Factorial )
+: fac dup 1 <= if drop 1 else dup 1- fac * then ;
+
+( Recursive Fibonacci Sequence )
+: fib dup 2 >= if dup 1- fib swap 2 - fib + then ;
+
+eof

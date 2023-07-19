@@ -1,0 +1,62 @@
+; g6cc.lib - definitions for Greg's 6 Chip Computer (6809)
+
+	; Processor
+
+G6CC_XTL_CYC_PER_SEC	equ		7372600						;raw crystal speed
+G6CC_CPU_CYC_PER_SEC	equ		G6CC_XTL_CYC_PER_SEC/4		;processor clock speed
+G6CC_CPU_CYC_PER_MS		equ		G6CC_CPU_CYC_PER_SEC/1000	; and per millisec
+
+	; Memory Map
+
+G6CC_RAM_ORG			equ		$0000				;RAM
+G6CC_RAM_SIZE			equ		$8000
+
+G6CC_ROM_ORG			equ		$C000				;ROM
+G6CC_ROM_SIZE			equ		$4000
+
+G6CC_ACIA_CTL			equ		$A000				;(loosely decoded @ A000-BFFF)
+G6CC_ACIA_DATA			equ		$A001				;ACIA Serial Port
+G6CC_ACIA_STAT			equ		G6CC_ACIA_CTL
+
+	; ACIA Control Register
+
+ACIA_CTL_CDS_MASK		equ		$03					;Counter Divide Select bits
+ACIA_CTL_CDS_BY_1		equ		$00					; divide by 1
+ACIA_CTL_CDS_BY_16		equ		$01					; divide by 16
+ACIA_CTL_CDS_BY_64		equ		$02					; divide by 64
+ACIA_CTL_CDS_MRESET		equ		$03					; master reset
+ACIA_CTL_CDS_SHIFT		equ		0
+
+ACIA_CTL_WS_MASK		equ		$1C					;Word Select bits
+ACIA_CTL_WS_7E2			equ		$00					; 7 bits, even parity, 2 stop bits
+ACIA_CTL_WS_7O2			equ		$04					; 7 bits, odd parity, 2 stop bits
+ACIA_CTL_WS_7E1			equ		$08					; 7 bits, even parity, 1 stop bit
+ACIA_CTL_WS_7O1			equ		$0C					; 7 bits, odd parity, 1 stop bit
+ACIA_CTL_WS_8N2			equ		$10					; 8 bits, no parity, 2 stop bits
+ACIA_CTL_WS_8N1			equ		$14					; 8 bits, no parity, 1 stop bit
+ACIA_CTL_WS_8E1			equ		$18					; 8 bits, even parity, 1 stop bit
+ACIA_CTL_WS_8O1			equ		$1C					; 8 bits, odd parity, 1 stop bit
+ACIA_CTL_WS_SHIFT		equ		2
+
+ACIA_CTL_TC_MASK		equ		$60					;Transmitter Control bits
+ACIA_CTL_TC_RTS0_TXI0	equ		$00					; RTS~ = low, Xmit Int Disabled
+ACIA_CTL_TC_RTS0_TXI1	equ		$20					; RTS~ = low, Xmit Int Enabled
+ACIA_CTL_TC_RTS1_TXI0	equ		$40					; RTS~ = high, Xmit Int Disabled
+ACIA_CTL_TC_RTS0_BRK	equ		$60					; RTS~ = low, Xmit Int Disabled, send BREAK
+ACIA_CTL_TC_SHIFT		equ		5
+
+ACIA_CTL_RXI_MASK		equ		$80					;Receive Interrupt Enable bit
+ACIA_CTL_RXI_0			equ		$00
+ACIA_CTL_RXI_1			equ		$80
+ACIA_CTL_RXI_SHIFT		equ		7
+
+	; ACIA Status Register
+
+ACIA_STAT_RDRF_MASK		equ		$01					;Receive Data Register Full
+ACIA_STAT_TDRE_MASK		equ		$02					;Transmit Data Register Empty
+ACIA_STAT_DCD_MASK		equ		$04					;Data Carrier Detect state (inverted)
+ACIA_STAT_CTS_MASK		equ		$08					;Clear To Send state (inverted)
+ACIA_STAT_FE_MASK		equ		$10					;Framing Error
+ACIA_STAT_OVRN_MASK		equ		$20					;Receive overrun error
+ACIA_STAT_PE_MASK		equ		$40					;Parity Error
+ACIA_STAT_IRQ_MASK		equ		$80					;Interrupt Request state (inverted)

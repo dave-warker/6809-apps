@@ -1,0 +1,471 @@
+Alf's Base Dictionary
+=====================
+2023-mar-18 dww v1.6
+
+DEFINED IN "repl.asm"
+---------------------
+
+<str> def? -> 0 | <hdr-addr> 1
+	Search for word definition in the dictionary.
+	Returns 0 (false) if not found else 1 (true) and address of the word's header.
+
+0 -> 0, 1 -> 1
+	Pre-defined constants that push their value.
+
+<hdr-addr> def' -> <code-addr> 0 | 1
+	Given a word's header address, returns it's code address and 0 if it will be
+	compiled in compile mode or 1 ig it will be executed.
+
+<str> num? 0 | <int> 1
+	Try to parse a string as an integer. Returns 0 if failed else 1 and the number's
+	16 bit value. Accepts decimal, "0x" prefixed hex and "0b" prefixed binary numbers
+	with optinal leading minus (-) for negative numbers. Does not check for overflow.
+
+comp? -> 0 | 1
+	Pushes 1 if in compile mode else 0 if executing.
+
+{
+	Switches to execute mode.
+
+}
+	Switches to compile mode.
+
+<addr> go$
+	Jump to machine code address on top of stack.
+
+comp?!
+	Bails with error message "compile only!" if not in compile mode (aka "compile or die".)
+
+( comment text )
+	Text between the parens is comsidered a comment (ignored.) Can span multiple lines.
+
+(( comment
+	Single line comment, always ends at the end of the line.
+
+stk$check
+	Bails with error message "Stackoverflow!" if parameter stack has crossed into
+	dictionary space.
+
+CONSOLE I/O DEFINED IN "con.asm"
+--------------------------------
+
+load
+	Begin "file loading" mode. The CTS line of the FTDI port will only be HIGH (ON)
+	while Alf is reading a line of input to be interpreted, it is otherwise LOW (OFF.)
+	If you configure your host's serial console port to honor CTS flow control then
+	this will help Alf keep up with loading long, multi-line "files" via your terminal
+	program's "send text file" function. You might also need to include a short delay
+	(a few ms) at the end of each line to avoid losing the first character of the next
+	line. "file loading" mode remains in effect until "eof" is executed or Alf has to
+	bail and restart due to an error.
+
+eof
+	Ends "file loading" mode. Should be the last line sent after loading a file via
+	your terminal's "send text file" function.
+
+rdc -> <ch>
+	Read the next character from the line buffer. Returns nl (LF) at the end of the
+	line. Will prompt for a new input line if called when the buffer is empty.
+
+<buf> rdl
+	Read a line of input to a buffer. The buffer structure should be:
+		<max-len> <cur-len> <chars>
+	where <max-len> is a byte with the maximum allowed number of characters that will
+	fit into the buffer; <cur-len> is a byte that will receive the actual length of
+	the entered line, and <chars> are the actual storage for the buffer characters.
+	The maximum line length is 255 bytes. Use the "Chars" word to allocate a buffer.
+	Press RETURN (or LF) to end the line. The terminator char is not included in the
+	buffer. Automatically handles turning CTS ON then OFF again if "loading mode"
+	is active.
+
+<char> prc
+	Prints (outputs) a single character. LFs are converted to CR+LF on output.
+
+<n> sps
+	Print N spaces.
+
+sp
+	Print one space.
+
+nl
+	Print a newline (CR + LF.)
+
+<str> prs
+	Print a string. String format should be a leading length byte followed by
+	the actual characters of the string. There is no specific terminator so
+	feel free to output NULs if the need arises.
+
+BASIC OPERATORS DEFINED IN "bops.asm"
+-------------------------------------
+
+<addr> @ -> <16bit-value>
+	Pushes the contents of the word at the address on the stack.
+
+<addr> .@ -> <8bit-value>
+	Pushes the contents of the byte at the address on the stack (like C@ in FORTH.)
+
+<16bit-value> <addr> =
+	Store a 16 bit word at the address on top of the stack (like ! in FORTH.)
+
+<8bit-value> <addr> .=
+	Store an 8 bit byte at the address on top of the stack (like C! in FORTH.)
+
+<n> dup p-> <n> <n>
+	Duplicate the top item on the parameter stack.
+
+<n> <m> dup2 -> <n> <m> <n> <m>
+	Duplicate the top two items on the parameter stack.
+
+<n> <m> swap -> <m> <n>
+	Swap the top two items on the parameter stack.
+
+<n> drop ->
+	Remove the top item from the parameter stack.
+
+<n> <m> drop2 ->
+	Remove the top two items from the parameter stack.
+
+<n> <m> over -> <n> <m> <n>
+	Push a copy of the second item on the parameter stack.
+
+<n> <m> <o> rot -> <m> <o> <n>
+	Rotate the third item up to the top of the parameter stack.
+
+<n> rpush ->
+	Pops the top item off the parameter stack and pushes it on the return stack.
+
+rpop -> <n>
+	Pops the top item off the return stack and pushes it on the parameter stack.
+
+rswap ->
+	Swaps the top two items on the return stack.
+
+rdrop ->
+	Removes and discards the top item from the return stack.
+
+<addr> <count> <8bit-value> mset ->
+	Sets a block of memory to an 8 bit value. <count> is in bytes.
+
+<from> <count> <to> mcpy ->
+	Copies a block of memory to a new starting address. Correctly copies cases
+	where the destination range overlaps the source range.
+
+FLOW OF CONTROL OPERATORS DEFINED IN "cops.asm"
+-----------------------------------------------
+
+These are generally intended to only be used in compile mode and will bail with
+an error if you try to use then in execute mode. Note that a few items may be
+pushed on the return stack while these operators are being compiled so be careful
+if you want to muck with it then (the return stack is not used during execution.)
+
+LOW LEVEL INTERNAL WORDS
+
+jp$
+	"Jump" to a new address. This is an internal function compiled into word defs
+	to change the interpreter's execution address to the 16 bit value that follows
+	it in memory. It's used to implement the higher level control flow structures.
+
+<n> jf$
+	Same as above except only jumps if the top parameter stack item <n> is FALSE (0).
+
+<n> jt$
+	Same as jf$ except only jumps if the top item is TRUE (non-zero.)
+
+CHOICE OPERATORS
+
+<n> if <word> ... then
+	The words between "if" and "then" are executed if <n> is TRUE (non-zero.)
+
+<n> if <words> ... else <words> ... then
+	Same as above except the words between "if" and "else" are executed if <n>
+	is TRUE otherwise the words between "else" and "then" are executed.
+
+opt <n> do <words> ... or <m> do <words> ... else <words> ... then
+	A multi-way test version of "if". The first set of words are executed if
+	<n> is TRUE or the second set if <m> is TRUE otherwise the words between
+	"else" and "then" are executed. You can have as many "or ... do ..." clauses
+	as needed.
+
+LOOP OPERATORS
+
+loop <words> ... <n> stopif ... again
+	Loops indefinitely until <n> is TRUE
+
+loop <n> while <words> ... again
+	Loops while <n> is TRUE
+
+loop <words> ... <n> until
+	Loops until <n> is TRUE (always runs at least once.)
+
+loop <n> while ... <m> stopif ... <o> stopif ... again
+loop <n> while ... <m> stopif ... <o> until
+	The above operators can be used together.
+
+<count> times <words> ... next
+<count> times <words> ... <n> +next
+	Loops <count> times. The current loop value is available as "i", and it's
+	maximum value as "imax". The loop counter goes from 1 to <count>. You can
+	also use "stopif" to break out of the loop early. "j","jmax" and "k","kmax"
+	are available to access the loop counter of a parent or grandparent loop
+	respectively, e.g.:
+		5 times 10 times 20 times i j * k * 2 +next next next
+	NOTE: the loop counter and max value are kept on the return stack WHILE
+	THE LOOP IS EXECUTING so be careful not to disturb them.
+
+<from> <to> for <words> ... next
+<from> <to> for <words> ... <n> +next
+	Same as "times" except you supply the exact starting and ending loop values.
+	"stopif", "i", "j","k" all work as above.
+
+EXPRESSION OPERATORS DEFINED IN "expr.asm"
+------------------------------------------
+
+<n> pr
+	Print (display) top of stack as a signed decimal number.
+
+<n> pru
+	Print (display) top of stack as an unsigned decimal number.
+
+<n> prx
+	Print (display) top of stack as an unsigned hexadecimal number.
+
+<n> prb
+	Print (display) top of stack as an unsigned binary number.
+
+<n> <m> + -> <sum>
+	Add top two parameter stack items.
+
+<n> 1+ -> <n+1>
+	Add 1 to top item.
+
+<n> <m> - -> <sum>
+	Subtract top two parameter stack items.
+
+<n> 1- -> <n-1>
+	Subtract 1 from top item.
+
+<n> <m> * -> <prod>
+	Signed multiply.
+
+<n> <m> u* -> <prod>
+	Unsigned multiply.
+
+<n> <m> / -> <quot>
+	Signed divide.
+
+<n> <m> u/ -> <quot>
+	Unsigned divide.
+
+<n> <m> % -> <rem>
+	Signed remainder (modulo).
+
+<n> <m> u% -> <rem>
+	Unsigned remainder (modulo).
+
+<n> <m> & -> <and>
+	Bitwise AND.
+
+<n> <m> | -> <or>
+	Bitwise OR.
+
+<n> <m> ^ -> <xor>
+	Bitwise Exclusive OR.
+
+<n> << -> <m>
+	Shift left 1 bit.
+
+<n> >> -> <m>
+	Arithmatic (signed) shift right 1 bit.
+
+<n> u>> -> <m>
+	Logical (unsigned) shift right 1 bit.
+
+<n> <m> == -> 0 or 1
+	Compare <n> equal to <m>.
+
+<n> <m> != -> 0 or 1
+	Compare <n> not equal to <m>.
+
+<n> <m> < -> 0 or 1
+	Signed compare <n> less than <m>.
+
+<n> <m> <= -> 0 or 1
+	Signed compare <n> less than or equal to <m>.
+
+<n> <m> > -> 0 or 1
+	Signed compare <n> greater than <m>.
+
+<n> <m> >= -> 0 or 1
+	Signed compare <n> greater than or equal to <m>.
+
+<n> <m> u< -> 0 or 1
+	Unsigned compare <n> less than <m>.
+
+<n> <m> u<= -> 0 or 1
+	Unsigned compare <n> less than or equal to <m>.
+
+<n> <m> u> -> 0 or 1
+	Unsigned compare <n> greater than <m>.
+
+<n> <m> u>= -> 0 or 1
+	Unsigned compare <n> greater than or equal to <m>.
+
+<n> <m> min -> <smaller>
+	Signed minimum (smaller) of <n> and <m>.
+
+<n> <m> max -> <larger>
+	Signed maximum (bigger) of <n> and <m>.
+
+<n> <m> umin -> <smaller>
+	Unsigned minimum (smaller) of <n> and <m>.
+
+<n> <m> umax -> <larger>
+	Unsigned maximum (bigger) of <n> and <m>.
+
+DEFINED IN "defs.asm"
+---------------------
+
+In the following, "compile" means storing/allocating memory in dictionary space starting
+at the current dictionary p[ointer (dp).
+
+dp -> <addr>
+	Returns the next available address in Dictionary space.
+
+dp& -> <addr>
+	Returns the address of the address of the next available address in Dictionary space.
+
+free -> <n>
+	Size in bytes of the free space between the Dictionary and Parameter Stack.
+
+defs -> <head>
+	Returns the current head of the list of all defined words. It will be the address
+	of the most recently defined one. You can walk the entire list by following the
+	"next" link after the word's name in the header.
+
+def$ -> 0 | <addr>
+	Returns the head address of a word currently being defined (but not yet finished.)
+	Returns 0 if no word is being defined.
+
+: <name> <words> ... ;
+	Define a new word (same as in FORTH.)
+
+<n> alloc$
+	Allocate <n> bytes starting at the current Dictionary Pointer (dp). Bails if
+	the DP collides with the bottom address of the Parameter Stack.
+
+<8bit-value> . ->
+	Compiles the 8 bit byte on the top of the Parameter Stack at the current DP.
+	(Same as FORTH's C,)
+
+<16bit-value> , ->
+	Compiles the 16 bit word on the top of the Parameter Stack at the current DP.
+
+lit,
+	Compiles the 16 bit word that follows it at the current DP ("literal comma").
+
+ASM: <name> ... NEXT;
+	Begins defining a new word that will be written using 6809 machine code bytes.
+	There's no built-in assembler words unfortunately so you'll have to work out
+	the bytes yourself and use ' and . to compile them in. Unlike : ... ;, the
+	interpreter stays in execute mode so . and , can be used to build the code.
+
+find <name> -> <head>
+	Searches for the name that follows "find" in the command line in the list
+	of defined words and returns it's header address. Bails with "Not found!"
+	error if it can't find it.
+
+forget <name>
+	Forgets (deletes) the definition of the names word and all that were defined
+	after it. Useful to clean up after playing with word definitions that you
+	don't want to keep. Words defined in EPROM can't be forgotten so you'll get
+	an "Unforgetable!" error if you try.
+
+STRING FUNCTIONS DEFINED IN "strs.asm"
+--------------------------------------
+
+SCAP -> <n>
+	The maximum capacity allows for any string. They are limited to 255 bytes
+	because we're using a single byte for the length field.
+
+s$ -> <addr>
+	Returns the address of a 255 char string buffer you can use for a temporary string.
+	The contents will get overwritten by the next "..." string you enter in the
+	command line that is NOT being compiled into the dictionary.
+
+STR: <name>
+	Define a new 255 character string buffer.
+
+<n> CHARS: <name>
+	Define a new string buffer that can hold up to <n> bytes (where 1 <= <n> <= 255.)
+
+<str> scap -> <n>
+	Returns the maximum capacity of a string buffer (1 - 255 bytes.)
+
+<str> slen -> <n>
+	Returns the length of the current contents of a string buffer.
+
+<str> sdat -> <addr>
+	Returns the address of the first actual character in a string buffer.
+
+<str> <off> c@ -> -1 | <char>
+	Returns the character at given offset into the current string buffer contents.
+	Pushes -1 if the offset is out of range of the current contents.
+
+<char> <str> <off> c= ->
+	Store a character at given offset in a string buffer. Does nothing if the
+	offset is beyond the capactity of the buffer.
+
+<str> <off> <len> ss -> <str> <off> <len>
+	Sanitizes a sub-string range by adjusting it to fit within it's actual
+	capacity. The length will be 0 if it's entire outside of the string bounds.
+	Call this before using sscpy or sscat if you aren't sure if the sub-string
+	will fit in the destination string buffer.
+
+<str1> <str2> scpy ->
+	Copies <str1> into <str2>
+
+<str1> <str2> scat ->
+	Concatinates (appends) <str1> to the end of <str2>.
+
+<str1> <off> <len> <str2> sscpy ->
+	Copy a sub-string of <str1> (starting at <off> with given length) into
+	<str2> replacing it's contents.
+
+<str1> <off> <len> <str2> sscat ->
+	Concatinate a sub-string of <str1> to the end of <str2>.
+
+<arg1> ... <fmt> prf ->
+	Print arguments from the stack using giuven format (like C's printf.)
+	In the format string: %d = signed decimal arg, %u = unsigned decimal,
+	%x = hexadecimal, %b = binary, %c = single character, %s = string and
+	%% = a single %. All other characters are printed as-is. NOTE that the
+	arguments should be pushed on the stack IN REVERSE ORDER of how they
+	appear in the format string (first % applies to top of stack.)
+
+<char> cupper -> <char>
+	Convert a single character to upper case.
+
+<str1> <str2> scmp -> -1 | 0 | 1
+	Compare two strings (case is significant.) Pushes -1 if <str1> < <str2>,
+	0 if they're equal or 1 if <str1> > <str2>.
+
+<str1> <str2> cmpi -> -1 | 0 | 1
+	Same as above except ignores case.
+
+DEFINED IN "vars.asm"
+---------------------
+
+<n> VAL: <name>
+	Defines a constant named <name> that pushes <n> on the stack when referenced.
+
+VAR: <name>
+	Defines a 16 bit word variable that pushes it's address on the stack when
+	referenced. You'll have to use @ and = to get and set it's value.
+
+BYTE: <name>
+	Save as VAR: except defines an 8 bit byte variable (use .@ and .= to access.)
+
+<n> BYTES: <name>
+	Define a variable that can hold up to<n> bytes. It pushes the address of it's
+	first byte on the stack when referenced. Use this to hold compound structures
+	made up of multiple bytes and words.

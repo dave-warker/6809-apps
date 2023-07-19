@@ -1,0 +1,50 @@
+Demon 6809 v2.4
+> f0,100 0
+> d0 1f
+0000  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+> z0
+0000  86 12           LDA    #$12
+0002  4C              INCA   
+0003  B7 00 10        STA    $0010
+0006  20 FE           BRA    $0006
+0008  
+> g0 2
+PC=0002 : INCA   
+ A=12 B=00 CC=Efhinzvc X=0000 Y=0000 U=0000 S=7F00 DP=00
+> t
+PC=0003 : STA    $0010
+ A=13 B=00 CC=Efhinzvc X=0000 Y=0000 U=0000 S=7F00 DP=00
+> t
+PC=0006 : BRA    $0006
+ A=13 B=00 CC=Efhinzvc X=0000 Y=0000 U=0000 S=7F00 DP=00
+> d10
+0010  13 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+> e'A
+0041
+> e&'A+1
+&66
+> e4*(3-2+1)
+0008
+> we000,10
+S113E00010CE7FA5867F1F8B86DA91002603BDE69E
+S9030000FC
+> y`alf,10
+C000  7E C0 31        JMP    $C031
+C003  7E C0 34        JMP    $C034
+C006  10 AF C3        STY    ,--U
+C009  35 20           PULS   Y
+C00B  6E B1           JMP    [,Y++]
+C00D  37 20           PULU   Y
+C00F  6E B1           JMP    [,Y++]
+> g`alf
+alf v1.6
+: x "Hello Globe!" prs nl ;
+x
+Hello Globe!
+{pressed reset}
+Demon 6809 v2.4
+> g`syl
+Syl v1.1
+(car '(hello.world))
+HELLO
