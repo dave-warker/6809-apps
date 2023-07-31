@@ -50,7 +50,11 @@
 			pragma	6809,dollarnotlocal,cescapes
 
 			pragma	nolist
+			IFDEF PG09
+			include "pg09.lib"
+			ELSE
 			include	"g6cc.lib"
+			ENDIF
 			include "ascii.lib"
 			pragma	list
 

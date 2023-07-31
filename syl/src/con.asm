@@ -233,6 +233,52 @@ con$disp$ord$word:
 ;@@@ RAW (HARDWARE) CONSOLE I/O
 ;@@@
 
+	IFDEF PG09
+
+; >>> Console initialization (for @thorpej's 6809 Playground)
+; The Playground kernel has already done this for us; no need
+; to do anything else.
+con$init
+	rts
+
+; >>> Poll for raw console input (for @thorpej's 6809 Playground)
+; We can use the "cons_pollc" System Subroutine for this.  The Zero
+; flag is used in the same way by the Playground kernel, but it
+; leaves the value in A undefined if not character is available.
+; If Zero is clear, then the character is returned in A.
+; RETURNS: NE,B = input char else EQ,B = 0 if none avail
+con$gotc
+	pshs	A		; Save A
+	jsr	[SysSubr_cons_pollc] ; Call kernel's cons_pollc
+	bne	@charavail	; Z clear -> character in A
+	clrb			; sets Z
+	puls	A,PC		; Restore and return
+@charavail
+	tfr	A,B		; return character in B
+	puls	A,PC		; Restore and return
+
+; >>> Pause console input (set RTS=1)
+; There is no mechanism for this on the Playground.  The console UART
+; has an auto-/RTS circuit, so at least overflows won't occur.
+con$pause
+	rts
+
+; >>> Resume console input (set RTS=0)
+; See above.
+con$resume
+	rts
+
+; >>> @thorpej's 6809 Playground: Output character
+; We can use the "cons_putc" System Subroutine for this.
+; PASSED:  B = character to display
+con$outc
+	pshs	A		; Save A
+	tfr	B,A		; Kernel wants character to display in A
+	jsr	[SysSubr_cons_putc] ; Call kernel's cons_putc
+	puls	A,PC		; Restore and return
+
+	ELSE
+
 ; >>> Console initialization (for Grant's 6 Chip Computer h/w)
 ; 115200 baud, 8N1, RTS=0, RX INT enabled (in case wired for h/w handshake)
 con$init	lda		#ACIA_CTL_CDS_MRESET
@@ -269,3 +315,5 @@ con$outc	pshs	a
 			stb		G6CC_ACIA_DATA
 			puls	a
 			rts
+
+	ENDIF
