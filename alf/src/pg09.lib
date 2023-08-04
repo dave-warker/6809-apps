@@ -1,0 +1,20 @@
+; pg09.lib - definitions for @thorpej's 6809 Playground computer
+
+	; Processor
+	; (Hopefully we don't need the CPU speed constants for Alf -- the
+	; 6809 Playground has jumper-selectable CPU speeds... but we can
+	; read it from a register, if necessary.)
+
+	; Memory Map
+
+G6CC_RAM_ORG			equ		$0000	; Low banked RAM
+G6CC_RAM_SIZE			equ		$8000
+
+G6CC_ROM_ORG			equ		$C000	; Banked ROM
+G6CC_ROM_SIZE			equ		$2000
+
+	; Console I/O routines provided by the operating system
+	; kernel.
+SysSubr_cons_getc		equ		$E008
+SysSubr_cons_pollc		equ		$E00A
+SysSubr_cons_putc		equ		$E00C

@@ -10,7 +10,8 @@ G6CC_BAUD = 115200
 
 #
 
-BIN_PATH = ../../bin
+#BIN_PATH = ../../bin
+BIN_PATH = /opt/pkg/bin
 SRC_PATH = ./src
 
 ASM6809 = $(BIN_PATH)/lwasm
@@ -20,6 +21,9 @@ ASM6809_FLAGS = --format=ihex
 
 syl: $(SRC_PATH)/*.asm $(SRC_PATH)/*.lib
 	$(ASM6809) $(ASM6809_FLAGS) $(SRC_PATH)/syl.asm --output=syl.hex --list=syl.lst
+
+syl-pg09: $(SRC_PATH)/*.asm $(SRC_PATH)/*.lib
+	$(ASM6809) --define=PG09 $(ASM6809_FLAGS) $(SRC_PATH)/syl.asm --format=raw --output=syl-pg09.raw --list=syl-pg09.lst
 
 debug: $(SRC_PATH)/*.asm $(SRC_PATH)/*.lib
 	$(ASM6809) --define=DEBUG $(ASM6809_FLAGS) $(SRC_PATH)/syl.asm --output=debug.hex --list=debug.lst
