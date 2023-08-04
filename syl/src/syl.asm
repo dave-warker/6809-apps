@@ -73,7 +73,11 @@ CODE_END			equ		$7F00							;end address (below Demon vars)
 CODE_SIZE			equ		CODE_END-CODE_ORG
 	ELSE
 CONS_POOL_END		equ		$7F00							;end in EPROM build
+	IFDEF PG09
+CODE_ORG			equ		$C000							;Interpreter Code area (in Banked ROM)
+	ELSE
 CODE_ORG			equ		$D000							;Interpreter Code arera (in EPROM)
+	ENDIF
 CODE_SIZE			equ		$1000
 CODE_END			equ		CODE_ORG+CODE_SIZE
 	ENDIF
