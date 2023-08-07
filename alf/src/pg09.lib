@@ -15,6 +15,6 @@ G6CC_ROM_SIZE			equ		$2000
 
 	; Console I/O routines provided by the operating system
 	; kernel.
-SysSubr_cons_getc		equ		$E008
-SysSubr_cons_pollc		equ		$E00A
-SysSubr_cons_putc		equ		$E00C
+SysSubr_cons_getc		equ		$E00A
+SysSubr_cons_pollc		equ		$E00C
+SysSubr_cons_putc		equ		$E00E
