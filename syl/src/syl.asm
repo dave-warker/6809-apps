@@ -74,7 +74,11 @@ CODE_SIZE			equ		CODE_END-CODE_ORG
 	ELSE
 CONS_POOL_END		equ		$7F00							;end in EPROM build
 	IFDEF PG09
+	IFDEF PG09_BROM
 CODE_ORG			equ		$C000							;Interpreter Code area (in Banked ROM)
+	ELSE
+CODE_ORG			equ		$A000							;Interpreter Code area (in High Banked RAM)
+	ENDIF ; PG09_BROM
 	ELSE
 CODE_ORG			equ		$D000							;Interpreter Code arera (in EPROM)
 	ENDIF
@@ -390,4 +394,4 @@ syl_end	equ *
 	ERROR "GC Mark Pool init wants pool size a multiple of 4 for speed"
 	ENDIF
 
-		end
+		end	CODE_ORG
