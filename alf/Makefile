@@ -15,15 +15,17 @@ BIN_PATH = /opt/pkg/bin
 SRC_PATH = ./src
 
 ASM6809 = $(BIN_PATH)/lwasm
-ASM6809_FLAGS = --format=ihex
 
 #
 
+all: alf alf-pg09
+
 alf: $(SRC_PATH)/*.asm $(SRC_PATH)/*.lib
-	$(ASM6809) $(ASM6809_FLAGS) $(SRC_PATH)/alf.asm --output=alf.hex --list=alf.lst
+	$(ASM6809) --format=ihex $(SRC_PATH)/alf.asm --output=alf.hex --list=alf.lst
 
 alf-pg09: $(SRC_PATH)/*.asm $(SRC_PATH)/*.lib
-	$(ASM6809) --define=PG09 $(ASM6809_FLAGS) $(SRC_PATH)/alf.asm --format=raw --output=alf-pg09.raw --list=alf-pg09.lst
+	$(ASM6809) --define=PG09 --define=PG09_BROM --format=raw $(SRC_PATH)/alf.asm --output=alf-pg09.brom --list=alf-pg09-brom.lst
+	$(ASM6809) --define=PG09 --define=PG09_HBRAM --format=srec $(SRC_PATH)/alf.asm --output=alf-pg09.s19 --list=alf-pg09-hbram.lst
 
 debug: $(SRC_PATH)/*.asm $(SRC_PATH)/*.lib
 	$(ASM6809) --define=DEBUG $(ASM6809_FLAGS) $(SRC_PATH)/alf.asm --output=debug.hex --list=debug.lst

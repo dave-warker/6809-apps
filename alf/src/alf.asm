@@ -85,4 +85,4 @@ alf_dp$		equ		*						;initial dictionary pointer
 alf_end$	equ		*						;end of all code
 alf_defs$	equ		_head					;last defined word
 
-			end
+			end	ALF_KER_ORG

@@ -15,7 +15,11 @@ ALF_RO_SIZE		equ		$2000
 ALF_RW_ORG		equ		$0000						;read/write area
 ALF_RW_SIZE		equ		$4FFF
 	ELSE
+	IFDEF PG09_HBRAM
+ALF_RO_ORG		equ		$A000						;read/only area
+	ELSE
 ALF_RO_ORG		equ		$C000						;read/only area
+	ENDIF ; PG09_HBRAM
 ALF_RO_SIZE		equ		$2000
 ALF_RW_ORG		equ		$0000						;read/write area
 ALF_RW_SIZE		equ		$7F00
